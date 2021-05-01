@@ -27,6 +27,7 @@
     "@nestjs/platform-express": "7.6.15",
     "@nestjs/platform-ws": "7.6.15",
     "@nestjs/websockets": "7.6.15",
+    "asterisk-ami-client": "^1.1.5",
     "class-transformer": "0.4.0",
     "class-validator": "0.13.1",
     "env-cmd": "^10.0.1",

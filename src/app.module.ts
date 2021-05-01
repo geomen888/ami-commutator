@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { RedisModule } from 'nestjs-redis';
 
+import configuration from './config/configuration';
 import { EventsModule } from './events/events.module';
 import { AsteriskCommutationModule } from './asterisk-commutation/asterisk-commutation.module';
-import configuration from './config/configuration';
-import { RedisModule } from 'nestjs-redis';
 
 @Module({
   imports: [

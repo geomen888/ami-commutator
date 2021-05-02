@@ -14,7 +14,11 @@ import { AsteriskCommutationModule } from './asterisk-commutation/asterisk-commu
       load: [configuration],
     }),
     RedisModule.forRootAsync({
-      useFactory: (configService: ConfigService) => configService.get('redis'),         // or use async method
+      useFactory: (configService: ConfigService) => { 
+        const payload = configService.get('redis');
+    console.log('redis:payload::', payload);
+    return payload;
+    } ,         // or use async method
       inject: [ConfigService]
   }),
     EventsModule,

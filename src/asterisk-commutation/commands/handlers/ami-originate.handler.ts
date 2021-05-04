@@ -46,7 +46,8 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                         .on('hangup', chunk => { 
                             console.log("hangup:");
                             
-                            console.log(chunk); })
+                            console.log(chunk);
+                         })
                         .on('response', response => console.log("responce-ami:", response))
                         .on('disconnect', () => console.log('disconnect'))
                         .on('reconnection', () => console.log('reconnection'))
@@ -187,14 +188,12 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
         const token = await this.jwtService.signAsync({
             sub: 'asterisk',
             ID: id,
-            data: {
-                status: OrderStatusType.INITIALIZE
-            }
+            data: OrderStatusType.INITIALIZE
         });
-        this.debug.log(token, 'token::');
-        this.debug.log(wssUrl, 'url::')
+        // this.debug.log(token, 'token::');
+        // this.debug.log(wssUrl, 'url::')
 
-        this.wss = new WSS(wssUrl, 'ami-1.0', {
+        this.wss = new WSS(wssUrl, "ami-1.0", {
             headers: {
                 "X-Amz-Security-Token": token,
             }

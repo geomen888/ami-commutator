@@ -174,7 +174,7 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                 });
             });
         } catch (e) {
-            this.debug.error('execute:e:', e.message);
+            this.debug.error(e.message, 'execute:AmiOriginateCommand:e:');
         }
     }
 
@@ -182,20 +182,25 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
         const {
             wssUrl,
         } = this.options;
-
+      try {
         const token = await this.jwtService.signAsync({
             sub: 'asterisk',
             ID: id,
             data: {
                 status: OrderStatusType.INITIALIZE
             }
-        })
+        });
+        this.debug.log(token, 'token::');
+        this.debug.log(wssUrl, 'url::')
+
         this.wss = new WSS(wssUrl, 'ami-1.0', {
             headers: {
                 "X-Amz-Security-Token": token,
             }
         });
-
+    } catch (e) {
+        this.debug.error(e, 'execute:connect:e::')
+    }
         // return;
     }
 

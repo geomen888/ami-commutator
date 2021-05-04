@@ -30,8 +30,9 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                 amiClient,
                 amiPassword
             } = this.options;
-            this.debug.log(command, 'input:');
+            this.debug.log(JSON.stringify(command, null, 2), 'input::');
             await this.connect(command.id);
+            await Utils.delay(1000);
             const amiSaga = this.publisher.mergeObjectContext(this.rep);
             this.wss.on('open', () => {
                 this.debug.log('wss connected ...');

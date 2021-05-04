@@ -10,7 +10,6 @@ import { CommandHandlers } from './commands/handlers';
 import { EventHandlers } from './events/handlers';
 import { AmiSagas } from './sagas/ami.saga';
 
-
 @Module({
   imports: [
     ConfigModule,

@@ -8,6 +8,5 @@ RUN npm i --production
 RUN npm i -g @nestjs/cli
 COPY dist /usr/src/app/dist
 USER node
-CMD npm run build
-CMD npm start
+CMD npm run build && npm run start
 EXPOSE 5000

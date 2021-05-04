@@ -31,6 +31,7 @@ export class EventsGateway {
   @UseGuards(JwtWsGuard)
   @SubscribeMessage('events')
   async onEvent(client: any, data: IInputAmi): Promise<Observable<WsResponse<number>>> {
+    try {
     console.log('events:data::', data);
     
     await this.commandBus.execute(new AmiOriginateCommand({
@@ -39,5 +40,9 @@ export class EventsGateway {
     }));
 
     return from([1, 2, 3]).pipe(map(item => ({ event: 'events', data: item })));
+
+  } catch (e) {
+    console.error('onEvent:e:', e);
+  }
   }
 }

@@ -21,5 +21,6 @@ npm-debug.log
 /dist
 
 .env
+# docker
 docker-compose.yaml
 Dockerfile

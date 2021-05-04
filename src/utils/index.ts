@@ -1,3 +1,4 @@
+import WSS from 'ws';
 
 
 
@@ -30,5 +31,23 @@ export class Utils {
           configurable: false,
         });
         return p;
+      }
+
+      public static async connection(socket, timeout = 10000) {
+        const isOpened = () => (socket.readyState === WSS.OPEN)
+      
+        if (socket.readyState !== WSS.CONNECTING) {
+          return isOpened()
+        }
+        else {
+          const intrasleep = 100
+          const ttl = timeout / intrasleep // time to loop
+          let loop = 0
+          while (socket.readyState === WSS.CONNECTING && loop < ttl) {
+            await new Promise(resolve => setTimeout(resolve, intrasleep))
+            loop++
+          }
+          return isOpened()
+        }
       }
 }

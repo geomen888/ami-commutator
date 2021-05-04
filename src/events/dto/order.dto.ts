@@ -1,5 +1,5 @@
 import { Expose, plainToClass, Transform, Type } from 'class-transformer';
-import { OrderType } from '../../common/enum/order-type';
+import { OrderStatusType } from '../../common/enum/order-status-type';
 
 import {
     IsNumber,
@@ -16,8 +16,8 @@ export class OrderDto {
     @IsString()
     id: string;
 
-    @IsEnum({ entity: OrderType })
-    status: OrderType;
+    @IsEnum({ entity: OrderStatusType })
+    status: OrderStatusType;
 
     @Expose({groups: ['res']})
     @IsString()

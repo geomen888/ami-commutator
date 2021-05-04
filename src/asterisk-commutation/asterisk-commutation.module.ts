@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService, ConfigModule } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
+import { JwtModule } from '@nestjs/jwt';
 import Ami from 'asterisk-ami-client';
 
 import { AsteriskCommutationService } from './asterisk-commutation.service';
@@ -14,6 +15,14 @@ import { AmiSagas } from './sagas/ami.saga';
   imports: [
     ConfigModule,
     CqrsModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (opt: ConfigService) => ({
+        secret: opt.get<string>('jwtSecret'),
+        signOptions: { expiresIn: '31d' },
+      }),
+      inject: [ConfigService],
+    })
   ],
   providers: [
     {

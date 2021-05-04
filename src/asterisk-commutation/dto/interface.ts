@@ -1,6 +1,8 @@
+import { JsonObject } from 'type-fest';
+import Ami from 'asterisk-ami-client';
+
 import { ActionType } from '../../common/enum/ami-action-type';
 import { ContextType } from '../../common/enum/context-type';
-import Ami from 'asterisk-ami-client';
 
 export interface IConnectAmiCommand {
     socketId: string;
@@ -17,3 +19,15 @@ export interface IAwsOptions {
     amiClient: Ami;
     amiPassword: string;
 }
+
+
+export interface IPubSubMessage<T = JsonObject> {
+    action: string;
+    data: T;
+  }
+  
+  // FeelsGoodMan
+export interface IMessage {
+    topic?: string;
+    message?: string | object;
+  }

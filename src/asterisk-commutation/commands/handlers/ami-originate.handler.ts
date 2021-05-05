@@ -33,6 +33,12 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
             this.debug.log(JSON.stringify(command, null, 2), 'input::');
             await this.connect(command.id);
             const amiSaga = this.publisher.mergeObjectContext(this.rep);
+            console.log('::wss:connecting:', Wss.CONNECTING);
+            console.log('::wss:open:', Wss.OPEN);
+            console.log('::wss:closing:', Wss.CLOSING);
+            console.log('::wss:closed:', Wss.CLOSED);
+
+            this.debug.log(this.wss.readyState, 'amiSaga..., wss.state::');
             this.wss.on('open', () => {
                 this.debug.log('wss connected ...');
                 amiClient
@@ -175,7 +181,8 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                 });
             });
         } catch (e) {
-            this.debug.error(e.message, 'execute:AmiOriginateCommand:e:');
+            console.log('error:e::', e)
+            this.debug.error(e.message, 'execute:AmiOriginateCommand:e::');
         }
     }
 

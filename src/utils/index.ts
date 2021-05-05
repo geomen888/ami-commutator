@@ -1,7 +1,5 @@
 import WSS from 'ws';
 
-
-
 export class Utils {
 
     public static IsJsonString(str) {

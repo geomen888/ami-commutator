@@ -28,10 +28,11 @@ export interface IPubSubMessage<T = JsonObject> {
   
   // FeelsGoodMan
 export interface IMessage {
-    topic?: string;
-    message?: string | IIncapulatedMessage;
-  }
+    type?: string;
+    message?: string;
+  } 
 
-export interface IIncapulatedMessage {
-   action: ActionType;
-  }
+// export interface IIncapulatedMessage {
+//    type: ActionType;
+//     message?: string;
+//   }

@@ -5,15 +5,17 @@ import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs';
 import { JwtService } from '@nestjs/jwt';
 import Wss from 'ws';
 
-import { AmiOriginateCommand } from '../impl/connect-ami.command'
-import { IAwsOptions, IMessage, IPubSubMessage } from '../../dto/interface';
+import { AmiOriginateCommand } from '../impl/connect-ami.command';
+import { IAwsOptions, IMessage, IPubSubMessage, IIncapulatedMessage } from '../../dto/interface';
 import { AggregateAmiModel } from '../../models/asterisk.model';
 import { Utils } from '../../../utils';
 import { OrderStatusType } from '../../../common/enum/order-status-type';
+import { ActionType } from '../../../common/enum/ami-action-type';
 
 @CommandHandler(AmiOriginateCommand)
 export class OriginateCommandHandler implements ICommandHandler<AmiOriginateCommand> {
     private wss: Wss | null;
+    private terminate: boolean = false; 
     public readonly debug = new Logger(OriginateCommandHandler.name);
     ping!: NodeJS.Timeout;
 
@@ -38,8 +40,7 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
             console.log('::wss:closing:', Wss.CLOSING);
             console.log('::wss:closed:', Wss.CLOSED);
 
-            this.debug.log(this.wss.readyState, 'amiSaga..., wss.state::');
-            this.wss.on('open', () => {
+            this.debug.log(this.wss.readyState, 'amiSaga... wss.state::');
                 this.debug.log('wss connected ...');
                 amiClient
                     .connect('ami-manager', amiPassword, { host: 'localhost', port: 5038 })
@@ -49,8 +50,10 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                             .on('event', event => console.log(event))
                             .on('data', chunk => console.log(chunk))
                             .on('hangup', chunk => {
-                                console.log("hangup:");
-
+                                console.log('hangup:');
+                                this.sendData('HANGUP');
+                                // Todo disconnect по кругу сase message добавить свитч для дисконекта
+                                // this.terminate использовать что бы закрыть сокет
                                 console.log(chunk);
                             })
                             .on('response', response => console.log("responce-ami:", response))
@@ -59,8 +62,18 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                             .on('internalError', error => console.log(error))
                             .action({
                                 Action: 'Ping'
+                            })
+                            .action({
+                                Action:  'Ping'// { ...originatePayload, priority: 1 }
                             });
                     }).catch(error => console.log("error:ami-client:", error));
+
+                       // client1.action({ ...originatePayload, priority: 1 }, (err, done) => {
+                //     if (err) {
+                //         console.error('actions:originate:', err)
+                //         return;
+                //     }
+                // })
 
                 // amiSaga.commit();
                 this.wss.on('message', (msg: string) => {
@@ -73,9 +86,9 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                         case 'MESSAGE':
                             if (data && data.message && Utils.IsJsonString(data.message)) {
                                 this.debug.log(data.message, 'received:message: %s');
-                                amiClient.disconnect();
 
-                                amiSaga.commit();
+                                
+
                                 // const message: MessageMessage = JSON.parse(data.message);
                                 // const { topic } = data;
                                 // const channel = (await ChannelManager.get(
@@ -83,14 +96,20 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                                 //   Platform.get(Platform.Names.TWITCH),
                                 // ))!;
 
-                                // switch (message.type) {
-                                //   case 'viewcount':
-                                //     if (channel.live) {
-                                //       channel.viewcount = message.viewers!;
+                                if (data.message && typeof data.message === 'string') {
+                                    return;
+                                }
+                                const input = data.message as Required<IIncapulatedMessage>;
+              
+                                switch (input.action) {
 
-                                //       await this.manager.save(channel);
-                                //     }
-                                //     break;
+                                  case ActionType.DISCONNECT:
+                                    this.terminate = true;
+                                    this.wss!.close();
+                                    amiClient.disconnect();
+                                    amiSaga.commit();
+
+                                    break;
 
                                 //   case 'stream-up':
                                 //     channel.live = true;
@@ -111,7 +130,7 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
 
                                 //     await Platform.get(Platform.Names.TWITCH).message(channel, 'asd');
                                 //     break;
-                                // }
+                                }
                             }
                             break;
 
@@ -170,7 +189,7 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                     clearInterval(this.ping);
                     this.wss = null;
                     this.debug.log(e.reason, 'Socket is closed. Reconnect will be attempted in 7.5 second.');
-                    setTimeout(() => {
+                   !this.terminate && setTimeout(() => {
                         this.connect(command.id);
                     }, 7500);
                 });
@@ -179,7 +198,7 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                     console.log('Socket encountered error: ', err);
                     this.wss.close();
                 });
-            });
+            
         } catch (e) {
             console.log('error:e::', e)
             this.debug.error(e.message, 'execute:AmiOriginateCommand:e::');

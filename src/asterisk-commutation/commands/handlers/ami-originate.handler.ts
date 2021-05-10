@@ -53,6 +53,7 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                             .on('Hangup', chunk => {
                                 console.log('hangup::');
                                 this.sendData('HANGUP');
+
                                 // Todo disconnect по кругу сase message добавить свитч для дисконекта
                                 // this.terminate использовать что бы закрыть сокет
                                 // console.log(chunk);
@@ -86,15 +87,15 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                                 this.debug.log(JSON.stringify(data, null, 2), 'received:message:input::');
 
                                 switch (data.type) {
-
                                   case ActionType.DISCONNECT:
                                     this.debug.log(ActionType.DISCONNECT, 'case::');
 
                                     this.terminate = true;
-                                    this.wss!.close();
+                                    this.wss!.terminate();
+                                    clearInterval(this.ping);
+                                    this.wss = null;
                                     amiClient.disconnect();
                                     amiSaga.commit();
-
                                     break;
 
                                 //   case 'stream-up':
@@ -175,9 +176,12 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                     clearInterval(this.ping);
                     this.wss = null;
                     this.debug.log(e.reason, 'Socket is closed. Reconnect will be attempted in 7.5 second.');
-                   !this.terminate && setTimeout(() => {
-                        this.connect(command.id);
-                    }, 7500);
+                     if (!this.terminate) {
+                        setTimeout(() => {
+                            this.connect(command.id);
+                        }, 7500);
+                     }
+                   
                 });
 
                 this.wss.on('error', (err) => {

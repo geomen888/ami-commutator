@@ -31,6 +31,12 @@ export class Utils {
         return p;
       }
 
+      public static compareArrays<T>(a1: T[], a2: T[]): boolean {
+        const missing = a1.filter(item => a2.indexOf(item) < 0);
+    
+        return !!!missing.length;
+      }
+
       public static async connection(socket, timeout = 10000) {
         const isOpened = () => (socket.readyState === WSS.OPEN)
       

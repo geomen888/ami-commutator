@@ -16,6 +16,8 @@ import { ActionType } from '../../../common/enum/ami-action-type';
 export class OriginateCommandHandler implements ICommandHandler<AmiOriginateCommand> {
     private wss: Wss | null;
     private terminate: boolean = false; 
+    private events: string[] = [];
+    private triggerAnswer: string[] = [];
     public readonly debug = new Logger(OriginateCommandHandler.name);
     ping!: NodeJS.Timeout;
 
@@ -48,16 +50,21 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                     .then(() => {
                         amiClient
                             .on('connect', () => console.log('connect -- ami'))
-                            .on('event', event => console.log('event::', event))
-                            .on('data', chunk => console.log('data::',chunk))
-                            .on('Hangup', chunk => {
-                                console.log('hangup::');
-                                this.sendData('HANGUP');
+                            .on('event', event => { 
+                                console.log('event::', event);
+                                this.events.push(event.Event);
+                                if (event && event.State && event.State === 'NOT_INUSE') {
+                                    this.triggerAnswer.push(event.State)
+                               }
 
-                                // Todo disconnect по кругу сase message добавить свитч для дисконекта
-                                // this.terminate использовать что бы закрыть сокет
-                                // console.log(chunk);
+                                // ANSWER
+                                 if (this.triggerAnswer.length && Utils.compareArrays(this.events.slice(-2), ['Hangup', 'BridgeDestroy']) ) {
+                                    console.log('hangup:driver::'); 
+                                    this.sendData('HANGUP');
+                                 }       
+
                             })
+                            .on('data', chunk => console.log('data::',chunk))
                             .on('response', response => console.log("responce-ami:", response))
                             .on('disconnect', () => console.log('disconnect'))
                             .on('reconnection', () => console.log('reconnection'))
@@ -175,11 +182,15 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                 this.wss.on('close', (e: any) => {
                     clearInterval(this.ping);
                     this.wss = null;
-                    this.debug.log(e.reason, 'Socket is closed. Reconnect will be attempted in 7.5 second.');
                      if (!this.terminate) {
+                        this.debug.log(e.reason, 'Socket is closed. Reconnect will be attempted in 7.5 second.');
+
                         setTimeout(() => {
                             this.connect(command.id);
                         }, 7500);
+                     } else {
+                        this.debug.log(e.reason, 'Socket is terminate');
+
                      }
                    
                 });

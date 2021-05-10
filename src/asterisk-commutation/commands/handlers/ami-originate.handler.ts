@@ -6,7 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import Wss from 'ws';
 
 import { AmiOriginateCommand } from '../impl/connect-ami.command';
-import { IAwsOptions, IMessage, IPubSubMessage, IIncapulatedMessage } from '../../dto/interface';
+import { IAwsOptions, IMessage, IPubSubMessage } from '../../dto/interface';
 import { AggregateAmiModel } from '../../models/asterisk.model';
 import { Utils } from '../../../utils';
 import { OrderStatusType } from '../../../common/enum/order-status-type';
@@ -35,6 +35,7 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
             this.debug.log(JSON.stringify(command, null, 2), 'input::');
             await this.connect(command.id);
             const amiSaga = this.publisher.mergeObjectContext(this.rep);
+            console.log('::wss:password:', amiPassword);
             console.log('::wss:connecting:', Wss.CONNECTING);
             console.log('::wss:open:', Wss.OPEN);
             console.log('::wss:closing:', Wss.CLOSING);
@@ -43,18 +44,18 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
             this.debug.log(this.wss.readyState, 'amiSaga... wss.state::');
                 this.debug.log('wss connected ...');
                 amiClient
-                    .connect('ami-manager', amiPassword, { host: 'localhost', port: 5038 })
+                    .connect('ami-manager', amiPassword, { host: '127.0.0.1', port: 5038 })
                     .then(() => {
                         amiClient
                             .on('connect', () => console.log('connect -- ami'))
-                            .on('event', event => console.log(event))
-                            .on('data', chunk => console.log(chunk))
-                            .on('hangup', chunk => {
-                                console.log('hangup:');
+                            .on('event', event => console.log('event::', event))
+                            .on('data', chunk => console.log('data::',chunk))
+                            .on('Hangup', chunk => {
+                                console.log('hangup::');
                                 this.sendData('HANGUP');
                                 // Todo disconnect по кругу сase message добавить свитч для дисконекта
                                 // this.terminate использовать что бы закрыть сокет
-                                console.log(chunk);
+                                // console.log(chunk);
                             })
                             .on('response', response => console.log("responce-ami:", response))
                             .on('disconnect', () => console.log('disconnect'))
@@ -64,18 +65,13 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                                 Action: 'Ping'
                             })
                             .action({
-                                Action:  'Ping'// { ...originatePayload, priority: 1 }
-                            });
+                                 ...command, priority: 1 
+                            })
+
+                        
                     }).catch(error => console.log("error:ami-client:", error));
 
-                       // client1.action({ ...originatePayload, priority: 1 }, (err, done) => {
-                //     if (err) {
-                //         console.error('actions:originate:', err)
-                //         return;
-                //     }
-                // })
-
-                // amiSaga.commit();
+        
                 this.wss.on('message', (msg: string) => {
                     const { data, action }: IPubSubMessage<IMessage> = JSON.parse(msg);
                     switch (action) {
@@ -84,26 +80,16 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                             break;
 
                         case 'MESSAGE':
-                            if (data && data.message && Utils.IsJsonString(data.message)) {
-                                this.debug.log(data.message, 'received:message: %s');
-
+                            if (data && data.type) {
+                                this.debug.log(data.message, 'received:message:parsed: %s');
                                 
+                                this.debug.log(JSON.stringify(data, null, 2), 'received:message:input::');
 
-                                // const message: MessageMessage = JSON.parse(data.message);
-                                // const { topic } = data;
-                                // const channel = (await ChannelManager.get(
-                                //   topic.replace(/^(video-playback|community-points-channel-v1)\./, ''),
-                                //   Platform.get(Platform.Names.TWITCH),
-                                // ))!;
-
-                                if (data.message && typeof data.message === 'string') {
-                                    return;
-                                }
-                                const input = data.message as Required<IIncapulatedMessage>;
-              
-                                switch (input.action) {
+                                switch (data.type) {
 
                                   case ActionType.DISCONNECT:
+                                    this.debug.log(ActionType.DISCONNECT, 'case::');
+
                                     this.terminate = true;
                                     this.wss!.close();
                                     amiClient.disconnect();

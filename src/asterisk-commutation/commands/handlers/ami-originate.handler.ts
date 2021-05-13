@@ -60,7 +60,7 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                                 // ANSWER
                                  if (this.triggerAnswer.length && Utils.compareArrays(this.events.slice(-2), ['Hangup', 'BridgeDestroy']) ) {
                                     console.log('hangup:driver::'); 
-                                    this.sendData('HANGUP');
+                                    this.sendData('HANGUP', { id:  command.id });
                                  }       
 
                             })
@@ -90,13 +90,11 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                         case 'MESSAGE':
                             if (data && data.type) {
                                 this.debug.log(data.message, 'received:message:parsed: %s');
-                                
                                 this.debug.log(JSON.stringify(data, null, 2), 'received:message:input::');
 
                                 switch (data.type) {
                                   case ActionType.DISCONNECT:
                                     this.debug.log(ActionType.DISCONNECT, 'case::');
-
                                     this.terminate = true;
                                     this.wss!.terminate();
                                     clearInterval(this.ping);
@@ -135,62 +133,18 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                     }
                 })
 
-
-                // if (IsJsonString(message)) {
-                //     console.log('payload:original:', message);
-
-                //     const { originatePayload } = JSON.parse(message);
-                //     console.dir('payload:', originatePayload);
-
-                //     console.log('payload:', JSON.stringify({ ...originatePayload, priority: 1 }));
-
-                //     // client1.action({ ...originatePayload, priority: 1 }, (err, done) => {
-                //     //     if (err) {
-                //     //         console.error('actions:originate:', err)
-                //     //         return;
-                //     //     }
-                //     // })
-
-
-                // }
-
-
-
-                // if (Utils.IsJsonString(message)) {
-                //     console.log('payload:original:', message);
-
-                //     const { originatePayload } = JSON.parse(message);
-                //     console.dir('payload:', originatePayload);
-
-                //     console.log('payload:', JSON.stringify({ ...originatePayload, priority: 1 }));
-
-                // client1.action({ ...originatePayload, priority: 1 }, (err, done) => {
-                //     if (err) {
-                //         console.error('actions:originate:', err)
-                //         return;
-                //     }
-                // })
-
-
-                //   }
-
-
-
-
                 this.ping = setInterval(() => this.sendData('PING'), 15000);
-
                 this.wss.on('close', (e: any) => {
+                    this.debug.log(e, 'Socket is closed.');
                     clearInterval(this.ping);
                     this.wss = null;
                      if (!this.terminate) {
                         this.debug.log(e.reason, 'Socket is closed. Reconnect will be attempted in 7.5 second.');
-
                         setTimeout(() => {
                             this.connect(command.id);
                         }, 7500);
                      } else {
                         this.debug.log(e.reason, 'Socket is terminate');
-
                      }
                    
                 });

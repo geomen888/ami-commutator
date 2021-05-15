@@ -59,6 +59,8 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
 
                                 // ANSWER
                                  if (this.triggerAnswer.length && Utils.compareArrays(this.events.slice(-2), ['Hangup', 'BridgeDestroy']) ) {
+                                    console.log('hangup:driver:triggerAnswer::', this.triggerAnswer); 
+                                    console.log('hangup:driver:events::', this.events.slice(-2)); 
                                     console.log('hangup:driver::'); 
                                     this.sendData('HANGUP', { id:  command.id });
                                  }       

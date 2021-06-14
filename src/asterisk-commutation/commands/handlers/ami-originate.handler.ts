@@ -4,6 +4,7 @@ import { JsonObject } from 'type-fest';
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs';
 import { JwtService } from '@nestjs/jwt';
 import Wss from 'ws';
+import Ami from 'asterisk-ami-client';
 
 import { AmiOriginateCommand } from '../impl/connect-ami.command';
 import { IAwsOptions, IMessage, IPubSubMessage } from '../../dto/interface';
@@ -31,9 +32,9 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
     async execute(command: AmiOriginateCommand) {
         try {
             const {
-                amiClient,
                 amiPassword
             } = this.options;
+            const amiClient = new Ami();
             this.debug.log(JSON.stringify(command, null, 2), 'input::');
             await this.connect(command.id);
             const amiSaga = this.publisher.mergeObjectContext(this.rep);
@@ -99,7 +100,8 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                                   case ActionType.DISCONNECT:
                                     this.debug.log(ActionType.DISCONNECT, 'case::');
                                     this.terminate = true;
-                                    this.wss!.terminate();
+                                    this.wss?.close();
+                                    this.wss?.terminate();
                                     clearInterval(this.ping);
                                     this.wss = null;
                                     amiClient.disconnect();

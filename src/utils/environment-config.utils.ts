@@ -28,17 +28,17 @@ export class EnvironmentConfigUtils {
   }
 
   static isDev(): boolean {
-    return EnvironmentConfigUtils.stringLowerCase('APP_ENV') === 'dev'
+    return EnvironmentConfigUtils.stringLowerCase('NODE_ENV') === 'dev'
       || EnvironmentConfigUtils.stringLowerCase('APP_ENV') === 'development';
   }
 
   static isStaging(): boolean {
-    return EnvironmentConfigUtils.stringLowerCase('APP_ENV') === 'stage'
+    return EnvironmentConfigUtils.stringLowerCase('NODE_ENV') === 'stage'
       || EnvironmentConfigUtils.stringLowerCase('APP_ENV') === 'staging';
   }
 
   static isProduction(): boolean {
-    return EnvironmentConfigUtils.stringLowerCase('APP_ENV') === 'prod'
+    return EnvironmentConfigUtils.stringLowerCase('NODE_ENV') === 'prod'
       || EnvironmentConfigUtils.stringLowerCase('APP_ENV') === 'production';
   }
 

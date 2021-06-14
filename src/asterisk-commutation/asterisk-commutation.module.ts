@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigService, ConfigModule } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
 import { JwtModule } from '@nestjs/jwt';
-import Ami from 'asterisk-ami-client';
 
 import { AsteriskCommutationService } from './asterisk-commutation.service';
 import { AsteriskCommutationGateway } from './asterisk-commutation.gateway';
@@ -31,7 +30,6 @@ import { AmiSagas } from './sagas/ami.saga';
 
         return {
           wssUrl: opt.get<string>('awsWssUrl'),
-          amiClient: new Ami(),
           amiPassword: opt.get<string>('amiPassword'),
         };
       },

@@ -32,7 +32,9 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
     async execute(command: AmiOriginateCommand) {
         try {
             const {
-                amiPassword
+                amiPassword,
+                amiPort,
+                amiHostIp
             } = this.options;
             const amiClient = new Ami();
             this.debug.log(JSON.stringify(command, null, 2), 'input::');
@@ -47,7 +49,7 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
             this.debug.log(this.wss.readyState, 'amiSaga... wss.state::');
                 this.debug.log('wss connected ...');
                 amiClient
-                    .connect('ami-manager', amiPassword, { host: '127.0.0.1', port: 5038 })
+                    .connect('ami-manager', amiPassword, { host: amiHostIp, port: amiPort })
                     .then(() => {
                         amiClient
                             .on('connect', () => console.log('connect -- ami'))

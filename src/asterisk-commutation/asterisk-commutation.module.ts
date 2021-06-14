@@ -30,6 +30,8 @@ import { AmiSagas } from './sagas/ami.saga';
 
         return {
           wssUrl: opt.get<string>('awsWssUrl'),
+          amiPort: opt.get<number>('amiPort'),
+          amiHostIp: opt.get<string>('amiHostIp'),
           amiPassword: opt.get<string>('amiPassword'),
         };
       },

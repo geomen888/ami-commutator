@@ -17,6 +17,8 @@ export interface IConnectAmiCommand {
 export interface IAwsOptions {
     wssUrl: string;
     amiPassword: string;
+    amiPort: number;
+    amiHostIp: string;
 }
 
 

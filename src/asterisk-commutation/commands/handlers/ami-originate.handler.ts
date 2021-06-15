@@ -177,8 +177,8 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                 ID: id,
                 data: OrderStatusType.INITIALIZE
             });
-            this.debug.log(token, 'token::');
-            this.debug.log(wssUrl, 'url::')
+            // this.debug.log(token, 'token::');
+            // this.debug.log(wssUrl, 'url::')
 
             this.wss = new Wss(wssUrl, "ami-1.0", {
                 headers: {
@@ -199,8 +199,11 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
     }
 
     private sendData(action: string, message?: JsonObject): void {
+        if (!this.wss || this.wss && this.wss?.readyState !== Wss.OPEN) {
 
-        this.wss!.send(JSON.stringify({
+            return;
+        }
+        this.wss.send(JSON.stringify({
             action,
             message,
             nonce: randomBytes(16).toString('hex'),

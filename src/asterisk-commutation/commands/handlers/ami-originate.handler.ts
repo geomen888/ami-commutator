@@ -40,11 +40,6 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
             this.debug.log(JSON.stringify(command, null, 2), 'input::');
             await this.connect(command.id);
             const amiSaga = this.publisher.mergeObjectContext(this.rep);
-            console.log('::wss:password:', amiPassword);
-            console.log('::wss:connecting:', Wss.CONNECTING);
-            console.log('::wss:open:', Wss.OPEN);
-            console.log('::wss:closing:', Wss.CLOSING);
-            console.log('::wss:closed:', Wss.CLOSED);
 
             this.debug.log(this.wss.readyState, 'amiSaga... wss.state::');
                 this.debug.log('wss connected ...');
@@ -63,10 +58,7 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                                 // ANSWER
                                  if (this.triggerAnswer.length && events.size === 2 &&
                                      Utils.compareArrays(Array.from(events), ['Hangup', 'BridgeDestroy']) ) {
-                                    console.log('hangup:driver:triggerAnswer::', this.triggerAnswer); 
-                                    console.log('hangup:driver:events::', this.events.slice(-2)); 
-                                    console.log('hangup:driver::'); 
-                                    this.sendData('HANGUP', { id:  command.id });
+                                     this.sendData('HANGUP', { id:  command.id });
                                  }       
 
                             })
@@ -109,26 +101,6 @@ export class OriginateCommandHandler implements ICommandHandler<AmiOriginateComm
                                     amiClient.disconnect();
                                     amiSaga.commit();
                                     break;
-
-                                //   case 'stream-up':
-                                //     channel.live = true;
-
-                                //     await this.manager.save(channel);
-                                //     break;
-
-                                //   case 'stream-down':
-                                //     channel.live = false;
-                                //     channel.viewcount = 0;
-
-                                //     await this.manager.save(channel);
-                                //     break;
-
-                                //   case 'reward-redeemed':
-                                //   case 'commercial':
-                                //     console.debug(message);
-
-                                //     await Platform.get(Platform.Names.TWITCH).message(channel, 'asd');
-                                //     break;
                                 }
                             }
                             break;

@@ -6,8 +6,7 @@ import {
 } from '@nestjs/websockets';
 import { CommandBus } from '@nestjs/cqrs';
 import { UseGuards } from '@nestjs/common';
-import { from, Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 import { Server } from 'ws';
 
 import { IInputAmi } from './dto/interface';
@@ -30,16 +29,15 @@ export class EventsGateway {
 
   @UseGuards(JwtWsGuard)
   @SubscribeMessage('events')
-  async onEvent(client: any, data: IInputAmi): Promise<Observable<WsResponse<number>>> {
+  async onEvent(client: any, data: IInputAmi): Promise<void> {
     try {
-    console.log('events:data::', data);
     
     await this.commandBus.execute(new AmiOriginateCommand({
      ...data.payload,
      ...data.order
     }));
 
-    return from([1, 2, 3]).pipe(map(item => ({ event: 'events', data: item })));
+    return;
 
   } catch (e) {
     console.error('onEvent:e:', e);

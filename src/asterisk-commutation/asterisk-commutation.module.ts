@@ -3,8 +3,6 @@ import { ConfigService, ConfigModule } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
 import { JwtModule } from '@nestjs/jwt';
 
-import { AsteriskCommutationService } from './asterisk-commutation.service';
-import { AsteriskCommutationGateway } from './asterisk-commutation.gateway';
 import { AggregateAmiModel } from './models/asterisk.model';
 import { CommandHandlers } from './commands/handlers';
 import { EventHandlers } from './events/handlers';
@@ -45,8 +43,6 @@ import { AmiSagas } from './sagas/ami.saga';
     ...CommandHandlers,
     ...EventHandlers,
     AmiSagas,
-    AsteriskCommutationGateway,
-    AsteriskCommutationService
   ]
 })
 export class AsteriskCommutationModule { }

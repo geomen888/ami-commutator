@@ -1,88 +1,186 @@
-import { Inject, Logger, NotFoundException } from '@nestjs/common';
-import { CommandHandler, EventPublisher, ICommandHandler, CommandBus } from '@nestjs/cqrs';
-import WSS from 'ws';
+import { Inject, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
+import { JsonObject } from 'type-fest';
+import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs';
+import { JwtService } from '@nestjs/jwt';
+import Wss from 'ws';
+import Ami from 'asterisk-ami-client';
 
-import { AmiOriginateCommand } from '../impl/connect-ami.command'
-import { IAwsOptions } from '../../dto/interface';
+import { AmiOriginateCommand } from '../impl/connect-ami.command';
+import { IAwsOptions, IMessage, IPubSubMessage } from '../../dto/interface';
 import { AggregateAmiModel } from '../../models/asterisk.model';
 import { Utils } from '../../../utils';
+import { OrderStatusType } from '../../../common/enum/order-status-type';
+import { ActionType } from '../../../common/enum/ami-action-type';
 
 @CommandHandler(AmiOriginateCommand)
 export class OriginateCommandHandler implements ICommandHandler<AmiOriginateCommand> {
-    private wss: WSS;
+    private wss: Wss | null;
+    private terminate: boolean = false; 
+    private events: string[] = [];
+    private triggerAnswer: string[] = [];
     public readonly debug = new Logger(OriginateCommandHandler.name);
+    ping!: NodeJS.Timeout;
+
     constructor(
         @Inject('aggregate') private rep: AggregateAmiModel,
         @Inject('AWS_OPTIONS') private options: IAwsOptions,
+        protected readonly jwtService: JwtService,
         private readonly publisher: EventPublisher,
-        private readonly commandBus: CommandBus,
 
     ) { }
     async execute(command: AmiOriginateCommand) {
         try {
             const {
-                amiClient,
-                amiPassword
+                amiPassword,
+                amiPort,
+                amiHostIp
             } = this.options;
-            this.debug.log(command, 'input:');
-            await this.connect();
+            const amiClient = new Ami();
+            this.debug.log(JSON.stringify(command, null, 2), 'input::');
+            await this.connect(command.id);
             const amiSaga = this.publisher.mergeObjectContext(this.rep);
-            this.wss.on('open', () => {
-                console.log('connected');
-                this.wss.on('message', (message: string) => {
-                    console.log('received:message: %s', message);
-                    amiClient
-                        .connect('ami-manager', amiPassword, { host: 'localhost', port: 5038 })
-                        .then(() => {
 
-                            amiClient
-                                .on('connect', () => console.log('connect -- ami'))
-                                .on('event', event => console.log(event))
-                                .on('data', chunk => console.log(chunk))
-                                .on('response', response => console.log("responce-ami:", response))
-                                .on('disconnect', () => console.log('disconnect'))
-                                .on('reconnection', () => console.log('reconnection'))
-                                .on('internalError', error => console.log(error))
-                                .action({
-                                    Action: 'Ping'
-                                });
+            this.debug.log(this.wss.readyState, 'amiSaga... wss.state::');
+                this.debug.log('wss connected ...');
+                amiClient
+                    .connect('ami-manager', amiPassword, { host: amiHostIp, port: amiPort })
+                    .then(() => {
+                        amiClient
+                            .on('connect', () => console.log('connect -- ami'))
+                            .on('event', event => { 
+                                console.log('event::', event);
+                                this.events.push(event.Event);
+                                if (event && event.State && event.State === 'NOT_INUSE') {
+                                    this.triggerAnswer.push(event.State)
+                               }
+                               const events: Set<string> = new Set<string>(this.events.slice(-2));
+                                // ANSWER
+                                 if (this.triggerAnswer.length && events.size === 2 &&
+                                     Utils.compareArrays(Array.from(events), ['Hangup', 'BridgeDestroy']) ) {
+                                     this.sendData('HANGUP', { id:  command.id });
+                                 }       
 
-                                if (Utils.IsJsonString(message)) {
-                                    console.log('payload:original:', message);
-            
-                                    const { originatePayload } = JSON.parse(message);
-                                    console.dir('payload:', originatePayload);
-            
-                                    console.log('payload:', JSON.stringify({ ...originatePayload, priority: 1 }));
-            
-                                    // client1.action({ ...originatePayload, priority: 1 }, (err, done) => {
-                                    //     if (err) {
-                                    //         console.error('actions:originate:', err)
-                                    //         return;
-                                    //     }
-                                    // })
-            
+                            })
+                            .on('data', chunk => console.log('data::',chunk))
+                            .on('response', response => console.log("responce-ami:", response))
+                            .on('disconnect', () => console.log('disconnect'))
+                            .on('reconnection', () => console.log('reconnection'))
+                            .on('internalError', error => console.log(error))
+                            .action({
+                                Action: 'Ping'
+                            })
+                            .action({
+                                 ...command, priority: 1 
+                            })
+
+                        
+                    }).catch(error => console.log("error:ami-client:", error));
+
+        
+                this.wss.on('message', (msg: string) => {
+                    const { data, action }: IPubSubMessage<IMessage> = JSON.parse(msg);
+                    switch (action) {
+                        case 'PONG':
+                            this.debug.log('Received PONG from PubSub');
+                            break;
+
+                        case 'MESSAGE':
+                            if (data && data.type) {
+                                this.debug.log(data.message, 'received:message:parsed: %s');
+                                this.debug.log(JSON.stringify(data, null, 2), 'received:message:input::');
+
+                                switch (data.type) {
+                                  case ActionType.DISCONNECT:
+                                    this.debug.log(ActionType.DISCONNECT, 'case::');
+                                    this.terminate = true;
+                                    this.wss?.close();
+                                    this.wss?.terminate();
+                                    clearInterval(this.ping);
+                                    this.wss = null;
+                                    amiClient.disconnect();
                                     amiSaga.commit();
+                                    break;
                                 }
+                            }
+                            break;
 
-                        }).catch(error => console.log("error:ami-client:", error));
+                        case 'RECONNECT':
+                            this.debug.warn('PubSub server sent a reconnect message. Restarting the socket.');
+                            this.wss!.close();
+                            break;
+                    }
+                })
+
+                this.ping = setInterval(() => this.sendData('PING'), 15000);
+                this.wss.on('close', (e: any) => {
+                    this.debug.log(e, 'Socket is closed.');
+                    clearInterval(this.ping);
+                    this.wss = null;
+                     if (!this.terminate) {
+                        this.debug.log(e.reason, 'Socket is closed. Reconnect will be attempted in 7.5 second.');
+                        setTimeout(() => {
+                            this.connect(command.id);
+                        }, 7500);
+                     } else {
+                        this.debug.log(e.reason, 'Socket is terminate');
+                     }
+                   
                 });
-            });
+
+                this.wss.on('error', (err) => {
+                    console.log('Socket encountered error: ', err);
+                    this.wss.close();
+                });
+            
         } catch (e) {
-            this.debug.error('execute:e:', e.message);
+            console.log('error:e::', e)
+            this.debug.error(e.message, 'execute:AmiOriginateCommand:e::');
         }
     }
 
-    private async connect(): Promise<void> {
+    private async connect(id: string): Promise<void> {
         const {
             wssUrl,
         } = this.options;
-        this.wss = new WSS(wssUrl, 'ami-1.0', {
-            headers: {
-                "X-Amz-Security-Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMSIsImRhdGEiOiJTZW1lbiIsImlhdCI6MTUxNjIzOTAyMiwiSUQiOiIyNjQ4ZjY3My03MDA4LTQyMWEtYTg5NC04NWJlYjVlYTg4MzMifQ.XE3fFttmpNUbenTcGl4bj66-PLRRlgS7OnNR46CRKmc",
-            }
-        });
+        try {
+            const token = await this.jwtService.signAsync({
+                sub: 'asterisk',
+                ID: id,
+                data: OrderStatusType.INITIALIZE
+            });
+            // this.debug.log(token, 'token::');
+            // this.debug.log(wssUrl, 'url::')
 
+            this.wss = new Wss(wssUrl, "ami-1.0", {
+                headers: {
+                    "X-Amz-Security-Token": token,
+                }
+            });
+
+            const open = await Utils.connection(this.wss);
+            if (!open) {
+                throw new UnauthorizedException('wss aws failed');
+            }
+
+            return;
+        } catch (e) {
+            this.debug.error(e, 'execute:connect:e::')
+        }
         // return;
     }
+
+    private sendData(action: string, message?: JsonObject): void {
+        if (!this.wss || this.wss && this.wss?.readyState !== Wss.OPEN) {
+
+            return;
+        }
+        this.wss.send(JSON.stringify({
+            action,
+            message,
+            nonce: randomBytes(16).toString('hex'),
+        }));
+    }
+
+
 }

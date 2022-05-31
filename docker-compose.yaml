@@ -1,29 +1,31 @@
 version: '3.7'
 services:
-#   main:
-#     container_name: main
-#     build:
-#       context: .
-#     volumes:
-#       - .:/usr/src/app
-#     ports:
-#       - ${PORT}:${PORT}
-#       - 9229:9229
-#     command: npm run start:dev
-#     links:
-#       - redisNest
-#     env_file:
-#       - .env
-#     networks:
-#       - webnet
+  main:
+    container_name: main
+    build:
+      context: .
+    volumes:
+      - .:/usr/src/app
+    ports:
+      - ${PORT}:${PORT}
+      - 9229:9229
+    command: npm run start:dev
+    # links:
+    #   - redisNest
+    env_file:
+      - .env
+    networks:
+      - webnet
+    extra_hosts:
+      - "localhost:172.31.34.128"
   redisNest:
     image: 'redis:alpine'
     ports:
       - 6379:6379
     volumes:
      - ../data/redis:/usr/src/app/data
-    restart: always 
+    restart: always
     networks:
         - webnet
 networks: 
- webnet:       
+    webnet:

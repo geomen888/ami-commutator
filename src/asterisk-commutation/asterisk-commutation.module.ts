@@ -1,20 +1,25 @@
 import { Module } from '@nestjs/common';
 import { ConfigService, ConfigModule } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
-import Ami from 'asterisk-ami-client';
+import { JwtModule } from '@nestjs/jwt';
 
-import { AsteriskCommutationService } from './asterisk-commutation.service';
-import { AsteriskCommutationGateway } from './asterisk-commutation.gateway';
 import { AggregateAmiModel } from './models/asterisk.model';
 import { CommandHandlers } from './commands/handlers';
 import { EventHandlers } from './events/handlers';
 import { AmiSagas } from './sagas/ami.saga';
 
-
 @Module({
   imports: [
     ConfigModule,
     CqrsModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (opt: ConfigService) => ({
+        secret: opt.get<string>('jwtSecret'),
+        signOptions: { expiresIn: '31d' },
+      }),
+      inject: [ConfigService],
+    })
   ],
   providers: [
     {
@@ -23,7 +28,8 @@ import { AmiSagas } from './sagas/ami.saga';
 
         return {
           wssUrl: opt.get<string>('awsWssUrl'),
-          amiClient: new Ami(),
+          amiPort: opt.get<number>('amiPort'),
+          amiHostIp: opt.get<string>('amiHostIp'),
           amiPassword: opt.get<string>('amiPassword'),
         };
       },
@@ -37,8 +43,6 @@ import { AmiSagas } from './sagas/ami.saga';
     ...CommandHandlers,
     ...EventHandlers,
     AmiSagas,
-    AsteriskCommutationGateway,
-    AsteriskCommutationService
   ]
 })
 export class AsteriskCommutationModule { }

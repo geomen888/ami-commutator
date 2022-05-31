@@ -4,17 +4,43 @@ import {
   WebSocketServer,
   WsResponse,
 } from '@nestjs/websockets';
-import { from, Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { CommandBus } from '@nestjs/cqrs';
+import { UseGuards } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { Server } from 'ws';
 
-@WebSocketGateway(5000)
+import { IInputAmi } from './dto/interface';
+import { AmiOriginateCommand } from '../asterisk-commutation/commands/impl/connect-ami.command';
+import { EnvironmentConfigUtils as env } from '../utils/environment-config.utils';
+import { JwtWsGuard } from '../auth/guards/ws-common.guard';
+
+const port = env.number('PORT', 5000);
+const stagePath =`/${env.string('NODE_ENV', 'dev')}`;
+
+@WebSocketGateway(port, { path: stagePath })
 export class EventsGateway {
   @WebSocketServer()
   server: Server;
 
+  constructor(
+    private readonly commandBus: CommandBus){
+
+  }
+
+  @UseGuards(JwtWsGuard)
   @SubscribeMessage('events')
-  onEvent(client: any, data: any): Observable<WsResponse<number>> {
-    return from([1, 2, 3]).pipe(map(item => ({ event: 'events', data: item })));
+  async onEvent(client: any, data: IInputAmi): Promise<void> {
+    try {
+    
+    await this.commandBus.execute(new AmiOriginateCommand({
+     ...data.payload,
+     ...data.order
+    }));
+
+    return;
+
+  } catch (e) {
+    console.error('onEvent:e:', e);
+  }
   }
 }

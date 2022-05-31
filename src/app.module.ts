@@ -4,11 +4,13 @@ import { RedisModule } from 'nestjs-redis';
 
 import configuration from './config/configuration';
 import { EventsModule } from './events/events.module';
+import { AuthModule } from './auth/auth.module';
 import { AsteriskCommutationModule } from './asterisk-commutation/asterisk-commutation.module';
 
 @Module({
   imports: [
    AsteriskCommutationModule,
+   AuthModule,
    ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
